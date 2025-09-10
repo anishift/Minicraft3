@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>MiniCraft+ — CDN Fix</title>
+  <title>MiniCraft+ — No‑Module Fix</title>
   <style>
     html,body{margin:0;height:100%;overflow:hidden;background:#111;color:#eee;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
     #ui{position:fixed;inset:0;pointer-events:none}
@@ -17,9 +17,6 @@
     .stone{background:linear-gradient(#bfbfbf,#8e8e8e)}
     .sand{background:linear-gradient(#f0e3a1,#d1c27e)}
     .wood{background:linear-gradient(#b0763d,#7a4f25)}
-    .leaves{background:linear-gradient(#7fe37a,#4aa34f)}
-    .water{background:linear-gradient(#5bc0ff,#2c7df0)}
-    .glass{background:linear-gradient(#d3ecff,#96c8ff)}
     #cross{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:24px;height:24px;opacity:.85}
     #cross:before,#cross:after{content:"";position:absolute;background:#fff}
     #cross:before{left:50%;top:0;width:2px;height:100%;transform:translateX(-50%)}
@@ -28,13 +25,15 @@
     .card{background:#1a1f2a;border:2px solid #000;border-radius:14px;padding:16px;text-align:center;max-width:620px}
     .btn{display:inline-block;margin-top:10px;background:#2c7df0;color:#fff;padding:10px 14px;border-radius:10px;font-weight:900;text-decoration:none;pointer-events:auto}
   </style>
+  <!-- Use non-module UMD builds (globals) -->
+  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.160.0/examples/js/controls/PointerLockControls.js"></script>
 </head>
 <body>
   <div id="overlay">
     <div class="card">
-      <h2>MiniCraft+ — CDN‑fixad</h2>
-      <p>Om din gamla sida kraschade med <code>Failed to resolve module specifier 'three'</code> var det för att den använde <b>bare imports</b>.<br>
-      Den här varianten importerar Three.js via CDN och fungerar på GitHub Pages.</p>
+      <h2>MiniCraft+ — No‑Module</h2>
+      <p>Den här varianten använder globala <code>THREE</code> (ingen ES‑module).<br>Kör stabilt på GitHub Pages även om moduler cachas fel.</p>
       <a href="#" class="btn" id="start">▶️ Starta</a>
     </div>
   </div>
@@ -44,11 +43,8 @@
     <div id="cross"></div>
   </div>
 
-  <script type="module">
-    import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-    import { PointerLockControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/PointerLockControls.js';
-
-    // Minimal värld för test
+  <script>
+    // Minimal sanity test (rotating cube)
     const scene=new THREE.Scene(); scene.background=new THREE.Color(0x88baff);
     const camera=new THREE.PerspectiveCamera(75, innerWidth/innerHeight, .1, 2000);
     const renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setSize(innerWidth,innerHeight); document.body.appendChild(renderer.domElement);
@@ -56,10 +52,9 @@
 
     const sun=new THREE.DirectionalLight(0xffffff, 1.0); sun.position.set(1,1,.5); scene.add(sun); scene.add(new THREE.AmbientLight(0x404040));
 
-    const controls=new PointerLockControls(camera, document.body);
+    const controls=new THREE.PointerLockControls(camera, document.body);
     document.getElementById('start').onclick=(e)=>{ e.preventDefault(); document.getElementById('overlay').style.display='none'; controls.lock(); };
 
-    // markera att allt funkar: rita kub
     const box=new THREE.Mesh(new THREE.BoxGeometry(4,4,4), new THREE.MeshLambertMaterial({color:0xffca6a}));
     scene.add(box); camera.position.set(8,6,10);
 
