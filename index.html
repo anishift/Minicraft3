@@ -3,48 +3,31 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>MiniCraft+ — No‑Module Fix</title>
+  <title>MiniCraft+ — No‑Module (Custom Controls)</title>
   <style>
     html,body{margin:0;height:100%;overflow:hidden;background:#111;color:#eee;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
-    #ui{position:fixed;inset:0;pointer-events:none}
-    #hint{position:absolute;left:50%;top:10px;transform:translateX(-50%);background:rgba(0,0,0,.5);padding:6px 10px;border-radius:8px;font-weight:700}
-    #hotbar{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);display:flex;gap:6px}
-    .slot{pointer-events:auto;width:48px;height:48px;border:2px solid #000;border-radius:8px;background:rgba(0,0,0,.35);display:grid;place-items:center;box-shadow:0 4px 16px rgba(0,0,0,.4)}
-    .slot.active{outline:2px solid #4fc3ff}
-    .blk{width:28px;height:28px;border-radius:4px;box-shadow:inset 0 2px 0 rgba(255,255,255,.2)}
-    .grass{background:linear-gradient(#6bc760,#4c8f44)}
-    .dirt{background:linear-gradient(#8b5a3c,#5c3b26)}
-    .stone{background:linear-gradient(#bfbfbf,#8e8e8e)}
-    .sand{background:linear-gradient(#f0e3a1,#d1c27e)}
-    .wood{background:linear-gradient(#b0763d,#7a4f25)}
+    #overlay{position:fixed;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.6)}
+    .card{background:#1a1f2a;border:2px solid #000;border-radius:14px;padding:16px;text-align:center;max-width:620px}
+    .btn{display:inline-block;margin-top:10px;background:#2c7df0;color:#fff;padding:10px 14px;border-radius:10px;font-weight:900;text-decoration:none;pointer-events:auto}
     #cross{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:24px;height:24px;opacity:.85}
     #cross:before,#cross:after{content:"";position:absolute;background:#fff}
     #cross:before{left:50%;top:0;width:2px;height:100%;transform:translateX(-50%)}
     #cross:after{top:50%;left:0;width:100%;height:2px;transform:translateY(-50%)}
-    #overlay{position:fixed;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.6)}
-    .card{background:#1a1f2a;border:2px solid #000;border-radius:14px;padding:16px;text-align:center;max-width:620px}
-    .btn{display:inline-block;margin-top:10px;background:#2c7df0;color:#fff;padding:10px 14px;border-radius:10px;font-weight:900;text-decoration:none;pointer-events:auto}
   </style>
-  <!-- Use non-module UMD builds (globals) -->
-  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-  <script src="https://unpkg.com/three@0.160.0/examples/js/controls/PointerLockControls.js"></script>
+  <script src="https://unpkg.com/three@0.150.1/build/three.min.js"></script>
 </head>
 <body>
   <div id="overlay">
     <div class="card">
-      <h2>MiniCraft+ — No‑Module</h2>
-      <p>Den här varianten använder globala <code>THREE</code> (ingen ES‑module).<br>Kör stabilt på GitHub Pages även om moduler cachas fel.</p>
+      <h2>MiniCraft+ — No‑Module (Custom Controls)</h2>
+      <p>Den här fixar felet <em>PointerLockControls is not a constructor</em> genom egna kontroller.<br>
+      Klicka Start → muslåsning; WASD för rörelse, Space hoppa, Shift spring.</p>
       <a href="#" class="btn" id="start">▶️ Starta</a>
     </div>
   </div>
-  <div id="ui">
-    <div id="hint">WASD + Mus · LMB bryt · RMB placera · 1–8 block · F flyga · F5 spara</div>
-    <div id="hotbar"></div>
-    <div id="cross"></div>
-  </div>
-
+  <div id="cross"></div>
   <script>
-    // Minimal sanity test (rotating cube)
+    // --- Basic scene ---
     const scene=new THREE.Scene(); scene.background=new THREE.Color(0x88baff);
     const camera=new THREE.PerspectiveCamera(75, innerWidth/innerHeight, .1, 2000);
     const renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setSize(innerWidth,innerHeight); document.body.appendChild(renderer.domElement);
@@ -52,14 +35,71 @@
 
     const sun=new THREE.DirectionalLight(0xffffff, 1.0); sun.position.set(1,1,.5); scene.add(sun); scene.add(new THREE.AmbientLight(0x404040));
 
-    const controls=new THREE.PointerLockControls(camera, document.body);
-    document.getElementById('start').onclick=(e)=>{ e.preventDefault(); document.getElementById('overlay').style.display='none'; controls.lock(); };
+    // Ground plane so du ser rörelse
+    const ground=new THREE.Mesh(new THREE.PlaneGeometry(200,200), new THREE.MeshLambertMaterial({color:0x6bc760}));
+    ground.rotation.x=-Math.PI/2; scene.add(ground);
 
-    const box=new THREE.Mesh(new THREE.BoxGeometry(4,4,4), new THREE.MeshLambertMaterial({color:0xffca6a}));
-    scene.add(box); camera.position.set(8,6,10);
+    // --- Custom pointer lock controls ---
+    let yaw=0, pitch=0;
+    const player = new THREE.Object3D(); // acts as a pivot for camera
+    player.position.set(0,2,5);
+    player.add(camera); camera.position.set(0,0,0);
+    scene.add(player);
 
-    function loop(){ box.rotation.y+=0.01; renderer.render(scene,camera); requestAnimationFrame(loop); }
-    loop();
+    const overlay=document.getElementById('overlay');
+    document.getElementById('start').onclick=(e)=>{ e.preventDefault(); overlay.style.display='none'; document.body.requestPointerLock(); };
+
+    document.addEventListener('pointerlockchange', ()=>{
+      if(document.pointerLockElement===document.body){
+        document.addEventListener('mousemove', onMouseMove);
+      } else {
+        document.removeEventListener('mousemove', onMouseMove);
+      }
+    });
+    function onMouseMove(e){
+      const sens=0.0025;
+      yaw -= e.movementX * sens;
+      pitch -= e.movementY * sens;
+      pitch = Math.max(-Math.PI/2, Math.min(Math.PI/2, pitch));
+      player.rotation.y = yaw;
+      camera.rotation.x = pitch;
+    }
+
+    const keys={w:false,a:false,s:false,d:false,space:false,shift:false};
+    addEventListener('keydown',e=>{ if(e.code==='KeyW')keys.w=true; if(e.code==='KeyA')keys.a=true; if(e.code==='KeyS')keys.s=true; if(e.code==='KeyD')keys.d=true; if(e.code==='Space')keys.space=true; if(e.code==='ShiftLeft')keys.shift=true; });
+    addEventListener('keyup',e=>{ if(e.code==='KeyW')keys.w=false; if(e.code==='KeyA')keys.a=false; if(e.code==='KeyS')keys.s=false; if(e.code==='KeyD')keys.d=false; if(e.code==='Space')keys.space=false; if(e.code==='ShiftLeft')keys.shift=false; });
+
+    // simple physics
+    let vy=0; const GRAV=20, JUMP=7; let onGround=true;
+    function update(dt){
+      const speed = (keys.shift?10:6);
+      const forward = new THREE.Vector3(0,0,-1).applyQuaternion(player.quaternion);
+      const right = new THREE.Vector3(1,0,0).applyQuaternion(player.quaternion);
+      forward.y=0; right.y=0; forward.normalize(); right.normalize();
+      if(keys.w) player.position.addScaledVector(forward, speed*dt);
+      if(keys.s) player.position.addScaledVector(forward, -speed*dt);
+      if(keys.a) player.position.addScaledVector(right, -speed*dt);
+      if(keys.d) player.position.addScaledVector(right, speed*dt);
+
+      // gravity against ground plane
+      if(onGround && keys.space){ vy=JUMP; onGround=false; }
+      vy -= GRAV*dt; player.position.y += vy*dt;
+      if(player.position.y<2){ player.position.y=2; vy=0; onGround=true; }
+    }
+
+    // visual: a cube
+    const box=new THREE.Mesh(new THREE.BoxGeometry(2,2,2), new THREE.MeshLambertMaterial({color:0xffca6a}));
+    box.position.set(0,2,-5); scene.add(box);
+
+    let last=performance.now();
+    function loop(now){
+      const dt=Math.min(0.033,(now-last)/1000); last=now;
+      update(dt);
+      box.rotation.y+=0.6*dt;
+      renderer.render(scene,camera);
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
   </script>
 </body>
 </html>
